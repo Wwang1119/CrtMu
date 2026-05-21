@@ -38,6 +38,20 @@ app.use((request, response, next) => {
   next();
 });
 
+function readOptionalString(body, fieldName) {
+  const value = body?.[fieldName];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function requireString(value, fieldName) {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  if (!normalized) {
+    throw new AppError(400, `${fieldName} is required.`);
+  }
+
+  return normalized;
+}
+
 app.get('/health', (request, response) => {
   response.json({
     ok: true,
@@ -51,9 +65,7 @@ app.get('/health', (request, response) => {
 });
 
 app.post('/chat', async (request, response, next) => {
-  const message = typeof request.body?.message === 'string'
-    ? request.body.message.trim()
-    : '';
+  const message = readOptionalString(request.body, 'message');
 
   if (!message) {
     return response.status(400).json({
@@ -85,8 +97,8 @@ app.get('/v1/membership/plans', (request, response) => {
 app.post('/v1/users/upsert', async (request, response, next) => {
   try {
     const user = await upsertUser({
-      userId: request.body?.userId,
-      studentName: request.body?.studentName,
+      userId: readOptionalString(request.body, 'userId'),
+      studentName: readOptionalString(request.body, 'studentName'),
     });
 
     return response.json({ ok: true, user });
@@ -120,8 +132,8 @@ app.post(
 app.post('/v1/users/:userId/membership', async (request, response, next) => {
   try {
     const user = await updateMembership({
-      userId: request.params.userId,
-      membershipTier: request.body?.membershipTier,
+      userId: requireString(request.params.userId, 'userId'),
+      membershipTier: readOptionalString(request.body, 'membershipTier'),
     });
 
     return response.json({ ok: true, user });
@@ -151,13 +163,27 @@ app.get('/v1/users/:userId/artworks', async (request, response, next) => {
 
 app.post('/v1/artworks/analyze', async (request, response, next) => {
   try {
+    const input = {
+      uploadId: readOptionalString(request.body, 'uploadId'),
+      userId: readOptionalString(request.body, 'userId'),
+      studentName: readOptionalString(request.body, 'studentName'),
+      title: readOptionalString(request.body, 'title'),
+      imageUrl: readOptionalString(request.body, 'imageUrl'),
+      studentNote: readOptionalString(request.body, 'studentNote'),
+    };
+
+    requireString(input.userId, 'userId');
+    if (!input.uploadId && !input.imageUrl) {
+      throw new AppError(400, 'Either uploadId or imageUrl is required.');
+    }
+
     const result = await analyzeArtwork({
-      uploadId: request.body?.uploadId,
-      userId: request.body?.userId,
-      studentName: request.body?.studentName,
-      title: request.body?.title,
-      imageUrl: request.body?.imageUrl,
-      studentNote: request.body?.studentNote,
+      uploadId: input.uploadId,
+      userId: input.userId,
+      studentName: input.studentName,
+      title: input.title,
+      imageUrl: input.imageUrl,
+      studentNote: input.studentNote,
     });
 
     return response.json({
