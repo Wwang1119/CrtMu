@@ -18,6 +18,9 @@ Useful commands:
 
 For iOS release preparation, see `APPSTORE_CHECKLIST.md`.
 
+For the current engineering structure and learning notes, see
+`docs/ENGINEERING_STRUCTURE.md`.
+
 For Android emulators, use `http://10.0.2.2:3000` instead of `127.0.0.1`.
 For a real phone on the same Wi-Fi, use your computer's LAN IP.
 
@@ -34,6 +37,7 @@ Useful commands:
 - `npm run dev`
 
 For production deployment notes, see `backend/DEPLOYMENT.md`.
+For the Flutter-backend API contract, see `backend/API_CONTRACT.md`.
 
 Available endpoints:
 
