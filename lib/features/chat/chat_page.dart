@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_chat_core/flutter_chat_core.dart';
+import 'package:flutter_chat_core/flutter_chat_core.dart' hide isOnlyEmoji;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -10,6 +10,7 @@ import '../../core/api/backend_api_client.dart';
 import '../../core/network/backend_config.dart';
 import '../artwork/models/artwork_models.dart';
 import '../artwork/services/artwork_critique_formatter.dart';
+import '../user/services/local_user_identity_service.dart';
 import 'chat_constants.dart';
 import 'services/chat_cache_service.dart';
 import 'utils/chat_text_utils.dart';
@@ -24,26 +25,30 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
+  static const _legacyMeUserId = 'user_me';
+
   final _uuid = const Uuid();
   final _picker = ImagePicker();
   final _cacheService = ChatCacheService();
+  final _identityService = const LocalUserIdentityService();
   late final BackendApiClient _apiClient = BackendApiClient(
     baseUrl: resolveBackendBaseUrl(),
   );
 
   late final InMemoryChatController _chatController;
-  bool _cacheReady = false;
-
-  late final Map<String, User> _users = {
-    meUserId: const User(id: meUserId, name: '我'),
+  final Map<String, User> _users = {
     teacherUserId: const User(id: teacherUserId, name: 'CrtMu'),
   };
+
+  bool _cacheReady = false;
+  String? _localUserId;
+  Object? _identityError;
 
   @override
   void initState() {
     super.initState();
     _chatController = InMemoryChatController(messages: [_openingMessage()]);
-    unawaited(_restoreChatCache());
+    unawaited(_initializeLocalUser());
   }
 
   @override
@@ -56,6 +61,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final localUserId = _localUserId;
     final materialTheme = Theme.of(context);
     final chatTheme = ChatTheme.fromThemeData(materialTheme).merge(
       const ChatTheme(
@@ -80,10 +86,21 @@ class _ChatPageState extends State<ChatPage> {
       ),
     );
 
+    if (localUserId == null) {
+      return Scaffold(
+        appBar: AppBar(title: const CrtMuChatTitle()),
+        body: Center(
+          child: _identityError == null
+              ? const CircularProgressIndicator()
+              : const Text('本地用户身份初始化失败'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const CrtMuChatTitle()),
       body: Chat(
-        currentUserId: meUserId,
+        currentUserId: localUserId,
         resolveUser: (id) async => _users[id],
         chatController: _chatController,
         theme: chatTheme,
@@ -155,6 +172,15 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  String get _currentUserId {
+    final userId = _localUserId;
+    if (userId == null) {
+      throw StateError('Local user identity is not ready.');
+    }
+
+    return userId;
+  }
+
   Message _openingMessage() {
     return Message.text(
       id: _uuid.v4(),
@@ -169,15 +195,57 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Future<void> _restoreChatCache() async {
+  Future<void> _initializeLocalUser() async {
+    try {
+      final userId = await _identityService.getOrCreateUserId();
+      if (!mounted) return;
+
+      setState(() {
+        _localUserId = userId;
+        _identityError = null;
+        _users[userId] = User(id: userId, name: '我');
+      });
+
+      await _restoreChatCache(userId);
+    } catch (error, stackTrace) {
+      debugPrint('[CrtMu][Identity] initialize failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      if (!mounted) return;
+
+      setState(() {
+        _identityError = error;
+      });
+      _showError(error);
+    }
+  }
+
+  Future<void> _restoreChatCache(String userId) async {
     final messages = await _cacheService.restore(
       fallbackMessage: _openingMessage,
     );
     if (!mounted) return;
 
-    await _chatController.setMessages(messages, animated: false);
+    await _chatController.setMessages(
+      _migrateLegacyUserMessages(messages, userId),
+      animated: false,
+    );
     _cacheReady = true;
     _schedulePersistChatCache();
+  }
+
+  List<Message> _migrateLegacyUserMessages(
+    List<Message> messages,
+    String userId,
+  ) {
+    return messages
+        .map((message) {
+          if (message.authorId != _legacyMeUserId) return message;
+
+          final json = message.toJson();
+          json['authorId'] = userId;
+          return Message.fromJson(json);
+        })
+        .toList(growable: false);
   }
 
   Future<void> _insertMessage(Message message) async {
@@ -195,6 +263,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _handlePickImage() async {
+    final userId = _currentUserId;
     final file = await _picker.pickImage(
       source: ImageSource.gallery,
       imageQuality: 85,
@@ -204,7 +273,7 @@ class _ChatPageState extends State<ChatPage> {
     await _insertMessage(
       Message.image(
         id: _uuid.v4(),
-        authorId: meUserId,
+        authorId: userId,
         createdAt: DateTime.now(),
         source: file.path,
       ),
@@ -216,11 +285,11 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final upload = await _apiClient.uploadImage(
         filePath: file.path,
-        userId: meUserId,
+        userId: userId,
       );
       final result = await _apiClient.analyzeArtwork(
         uploadId: upload.id,
-        userId: meUserId,
+        userId: userId,
         studentName: '我',
         title: file.name,
       );
@@ -245,10 +314,11 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> _handleSendText(String text) async {
+    final userId = _currentUserId;
     await _insertMessage(
       Message.text(
         id: _uuid.v4(),
-        authorId: meUserId,
+        authorId: userId,
         createdAt: DateTime.now(),
         text: text,
         metadata: <String, dynamic>{'isOnlyEmoji': isOnlyEmoji(text)},
