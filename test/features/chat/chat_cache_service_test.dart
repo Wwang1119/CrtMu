@@ -18,10 +18,10 @@ void main() {
         metadata: const {'type': 'typing'},
       );
 
-      final payload = ChatCacheService.buildCachePayload(
-        [durable, typing],
-        savedAt: DateTime.utc(2026, 1, 2),
-      );
+      final payload = ChatCacheService.buildCachePayload([
+        durable,
+        typing,
+      ], savedAt: DateTime.utc(2026, 1, 2));
 
       final messages = payload['messages'] as List;
       expect(messages, hasLength(1));
@@ -56,11 +56,11 @@ void main() {
         createdAt: DateTime.utc(2026, 1, 1),
         text: 'hello',
       );
-      final payload = ChatCacheService.buildCachePayload(
-        [message],
-        savedAt: DateTime.utc(2026, 1, 2),
-      );
-      (payload['messages'] as List).add('not a message');
+      final payload = ChatCacheService.buildCachePayload([
+        message,
+      ], savedAt: DateTime.utc(2026, 1, 2));
+      payload['messages'] = List<dynamic>.of(payload['messages'] as List)
+        ..add('not a message');
 
       final restored = ChatCacheService.decodeMessagesFromCache(payload);
 
