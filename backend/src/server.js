@@ -13,7 +13,6 @@ import {
 import { createTextReply } from './services/critique-service.js';
 import { membershipPlans } from './services/membership-service.js';
 import { buildUserProfile } from './services/profile-service.js';
-import { readStore } from './repositories/app-store.js';
 import {
   imageUploadMiddleware,
   registerUpload,
@@ -144,8 +143,7 @@ app.post('/v1/users/:userId/membership', async (request, response, next) => {
 
 app.get('/v1/users/:userId/profile', async (request, response, next) => {
   try {
-    const store = await readStore();
-    const profile = buildUserProfile(store, request.params.userId);
+    const profile = await buildUserProfile(request.params.userId);
     return response.json({ ok: true, profile });
   } catch (error) {
     return next(error);
