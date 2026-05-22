@@ -29,6 +29,7 @@ Flutter 客户端 -> Node.js 后端 -> AI provider（mock / Ark / Doubao）
 更详细的结构说明见：
 
 - `docs/ENGINEERING_STRUCTURE.md`
+- `backend/DATA_MODEL.md`
 - `backend/API_CONTRACT.md`
 
 ## 如何运行前端

@@ -4,7 +4,10 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import multer from 'multer';
 import { AppError } from '../lib/app-error.js';
-import { readStore, withStore } from '../repositories/app-store.js';
+import {
+  createUploadRecord,
+  findUploadById,
+} from '../repositories/upload-repository.js';
 
 export const uploadsDirectory = path.join(process.cwd(), 'uploads');
 mkdirSync(uploadsDirectory, { recursive: true });
@@ -61,17 +64,11 @@ export async function registerUpload({ file, requestBaseUrl, userId }) {
     createdAt: new Date().toISOString(),
   };
 
-  await withStore(async (store) => {
-    store.uploads.push(upload);
-    return upload;
-  });
-
-  return upload;
+  return createUploadRecord(upload);
 }
 
 export async function getUpload(uploadId) {
-  const store = await readStore();
-  const upload = store.uploads.find((item) => item.id === uploadId);
+  const upload = await findUploadById(uploadId);
   if (!upload) {
     throw new AppError(404, `Upload not found: ${uploadId}`);
   }

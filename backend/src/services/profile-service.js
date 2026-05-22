@@ -1,3 +1,6 @@
+import { listArtworksByUserId } from '../repositories/artwork-repository.js';
+import { findUserById } from '../repositories/user-repository.js';
+
 function averageScore(items) {
   if (!items.length) return null;
   return Math.round(items.reduce((sum, item) => sum + item, 0) / items.length);
@@ -16,12 +19,7 @@ function countValues(values) {
     .map(([label, count]) => ({ label, count }));
 }
 
-export function buildUserProfile(store, userId) {
-  const user = store.users.find((item) => item.id === userId);
-  const artworks = store.artworks
-    .filter((item) => item.userId === userId)
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
-
+export function buildUserProfileFromRecords({ user, artworks }) {
   const compositionScores = artworks
     .map((item) => item.critique?.scores?.composition)
     .filter((value) => typeof value === 'number');
@@ -57,4 +55,13 @@ export function buildUserProfile(store, userId) {
     recurringWeaknesses: weaknessCounts,
     recentArtworks: artworks.slice(0, 10),
   };
+}
+
+export async function buildUserProfile(userId) {
+  const [user, artworks] = await Promise.all([
+    findUserById(userId),
+    listArtworksByUserId(userId),
+  ]);
+
+  return buildUserProfileFromRecords({ user, artworks });
 }
