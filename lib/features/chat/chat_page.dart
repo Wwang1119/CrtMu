@@ -10,6 +10,7 @@ import '../../core/api/backend_api_client.dart';
 import '../../core/network/backend_config.dart';
 import '../artwork/models/artwork_models.dart';
 import '../artwork/services/artwork_critique_formatter.dart';
+import '../user/models/user_profile_models.dart';
 import '../user/services/local_user_identity_service.dart';
 import 'chat_constants.dart';
 import 'services/chat_cache_service.dart';
@@ -98,7 +99,19 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const CrtMuChatTitle()),
+      appBar: AppBar(
+        title: const CrtMuChatTitle(),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton.icon(
+              onPressed: () => _showUserStatus(localUserId),
+              icon: const Icon(Icons.account_circle_outlined),
+              label: const Text('我的'),
+            ),
+          ),
+        ],
+      ),
       body: Chat(
         currentUserId: localUserId,
         resolveUser: (id) async => _users[id],
@@ -425,6 +438,178 @@ class _ChatPageState extends State<ChatPage> {
       SnackBar(
         behavior: SnackBarBehavior.floating,
         content: Text(error.toString()),
+      ),
+    );
+  }
+
+  Future<void> _showUserStatus(String userId) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return _UserStatusSheet(apiClient: _apiClient, userId: userId);
+      },
+    );
+  }
+}
+
+class _UserStatusSheet extends StatefulWidget {
+  final BackendApiClient apiClient;
+  final String userId;
+
+  const _UserStatusSheet({required this.apiClient, required this.userId});
+
+  @override
+  State<_UserStatusSheet> createState() => _UserStatusSheetState();
+}
+
+class _UserStatusSheetState extends State<_UserStatusSheet> {
+  late Future<UserProfileSummary> _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = _loadProfile();
+  }
+
+  Future<UserProfileSummary> _loadProfile() async {
+    await widget.apiClient.upsertUser(userId: widget.userId, studentName: '我');
+    return widget.apiClient.fetchUserProfile(userId: widget.userId);
+  }
+
+  void _retry() {
+    setState(() {
+      _profileFuture = _loadProfile();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: FutureBuilder<UserProfileSummary>(
+          future: _profileFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const SizedBox(
+                height: 160,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return _UserStatusError(error: snapshot.error, onRetry: _retry);
+            }
+
+            return _UserStatusContent(profile: snapshot.requireData);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _UserStatusContent extends StatelessWidget {
+  final UserProfileSummary profile;
+
+  const _UserStatusContent({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('我的/会员状态', style: textTheme.titleMedium),
+        const SizedBox(height: 16),
+        _StatusLine(label: '当前用户 ID', value: profile.userId, selectable: true),
+        _StatusLine(label: '会员等级', value: profile.membershipTier),
+        _StatusLine(label: '作品数量', value: profile.artworkCount.toString()),
+      ],
+    );
+  }
+}
+
+class _UserStatusError extends StatelessWidget {
+  final Object? error;
+  final VoidCallback onRetry;
+
+  const _UserStatusError({required this.error, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('会员状态加载失败', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text(
+          error?.toString() ?? '未知错误',
+          style: TextStyle(color: colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('重试'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusLine extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool selectable;
+
+  const _StatusLine({
+    required this.label,
+    required this.value,
+    this.selectable = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final valueStyle = textTheme.bodyMedium?.copyWith(
+      color: colorScheme.onSurface,
+      fontWeight: FontWeight.w600,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 96,
+            child: Text(
+              label,
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: selectable
+                ? SelectableText(
+                    value,
+                    textAlign: TextAlign.right,
+                    style: valueStyle,
+                  )
+                : Text(value, textAlign: TextAlign.right, style: valueStyle),
+          ),
+        ],
       ),
     );
   }
