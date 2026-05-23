@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../features/artwork/models/artwork_models.dart';
+import '../../features/user/models/user_profile_models.dart';
 
 class BackendApiClient {
   final String baseUrl;
@@ -15,6 +16,7 @@ class BackendApiClient {
   final Duration uploadTimeout;
   final Duration analyzeTimeout;
   final Duration referenceGenerationTimeout;
+  final Duration profileTimeout;
 
   BackendApiClient({
     required this.baseUrl,
@@ -23,6 +25,7 @@ class BackendApiClient {
     this.uploadTimeout = const Duration(seconds: 20),
     this.analyzeTimeout = const Duration(seconds: 60),
     this.referenceGenerationTimeout = const Duration(seconds: 90),
+    this.profileTimeout = const Duration(seconds: 20),
   }) : _http = client ?? http.Client(),
        _ownsClient = client == null;
 
@@ -54,7 +57,10 @@ class BackendApiClient {
     debugPrint('[CrtMu][Backend] status=${response.statusCode}');
     debugPrint('[CrtMu][Backend] response=${response.body}');
 
-    final root = _decodeJsonObject(response, 'Backend JSON root is not an object');
+    final root = _decodeJsonObject(
+      response,
+      'Backend JSON root is not an object',
+    );
     _throwForBadStatus(response, 'Backend POST /chat failed');
     _throwForBackendError(root);
 
@@ -64,6 +70,78 @@ class BackendApiClient {
     }
 
     return reply;
+  }
+
+  Future<BackendUserAccount> upsertUser({
+    required String userId,
+    String studentName = '',
+  }) async {
+    final url = Uri.parse('$baseUrl/v1/users/upsert');
+    final payload = <String, dynamic>{
+      'userId': userId,
+      if (studentName.trim().isNotEmpty) 'studentName': studentName.trim(),
+    };
+
+    debugPrint('[CrtMu][Backend] POST $url');
+    debugPrint('[CrtMu][Backend] body=${jsonEncode(payload)}');
+
+    final response = await _postJson(
+      url,
+      payload,
+      timeout: profileTimeout,
+      connectionErrorMessage: 'Cannot reach user upsert endpoint at $url',
+      timeoutMessage:
+          'User upsert timed out after ${profileTimeout.inSeconds}s',
+    );
+
+    debugPrint('[CrtMu][Backend] upsert user status=${response.statusCode}');
+    debugPrint('[CrtMu][Backend] upsert user response=${response.body}');
+
+    final root = _decodeJsonObject(
+      response,
+      'User upsert JSON root is not an object',
+    );
+    _throwForBadStatus(response, 'Backend POST /v1/users/upsert failed');
+    _throwForBackendError(root);
+
+    final userJson = root['user'];
+    if (userJson is! Map) {
+      throw FormatException(
+        'User upsert response missing user payload: ${response.body}',
+      );
+    }
+
+    return BackendUserAccount.fromJson(userJson.cast<String, dynamic>());
+  }
+
+  Future<UserProfileSummary> fetchUserProfile({required String userId}) async {
+    final encodedUserId = Uri.encodeComponent(userId);
+    final url = Uri.parse('$baseUrl/v1/users/$encodedUserId/profile');
+
+    debugPrint('[CrtMu][Backend] GET $url');
+
+    final response = await _getJson(
+      url,
+      timeout: profileTimeout,
+      connectionErrorMessage: 'Cannot reach user profile endpoint at $url',
+      timeoutMessage:
+          'User profile request timed out after ${profileTimeout.inSeconds}s',
+    );
+
+    debugPrint('[CrtMu][Backend] profile status=${response.statusCode}');
+    debugPrint('[CrtMu][Backend] profile response=${response.body}');
+
+    final root = _decodeJsonObject(
+      response,
+      'User profile JSON root is not an object',
+    );
+    _throwForBadStatus(
+      response,
+      'Backend GET /v1/users/$userId/profile failed',
+    );
+    _throwForBackendError(root);
+
+    return UserProfileSummary.fromJson(root, fallbackUserId: userId);
   }
 
   Future<BackendUpload> uploadImage({
@@ -100,7 +178,10 @@ class BackendApiClient {
     debugPrint('[CrtMu][Backend] upload status=${response.statusCode}');
     debugPrint('[CrtMu][Backend] upload response=${response.body}');
 
-    final root = _decodeJsonObject(response, 'Upload JSON root is not an object');
+    final root = _decodeJsonObject(
+      response,
+      'Upload JSON root is not an object',
+    );
     _throwForBadStatus(response, 'Backend POST /v1/uploads/image failed');
 
     final uploadJson = root['upload'];
@@ -142,7 +223,10 @@ class BackendApiClient {
     debugPrint('[CrtMu][Backend] analyze status=${response.statusCode}');
     debugPrint('[CrtMu][Backend] analyze response=${response.body}');
 
-    final root = _decodeJsonObject(response, 'Analyze JSON root is not an object');
+    final root = _decodeJsonObject(
+      response,
+      'Analyze JSON root is not an object',
+    );
     _throwForBadStatus(response, 'Backend POST /v1/artworks/analyze failed');
 
     return ArtworkAnalysisResult.fromJson(root);
@@ -177,13 +261,36 @@ class BackendApiClient {
     debugPrint('[CrtMu][Backend] generate status=${response.statusCode}');
     debugPrint('[CrtMu][Backend] generate response=${response.body}');
 
-    final root = _decodeJsonObject(response, 'Generate JSON root is not an object');
+    final root = _decodeJsonObject(
+      response,
+      'Generate JSON root is not an object',
+    );
     _throwForBadStatus(
       response,
       'Backend POST /v1/artworks/$artworkId/generate-reference failed',
     );
 
     return ReferenceGenerationResult.fromJson(root);
+  }
+
+  Future<http.Response> _getJson(
+    Uri url, {
+    required Duration timeout,
+    required String connectionErrorMessage,
+    required String timeoutMessage,
+  }) async {
+    try {
+      return await _http
+          .get(
+            url,
+            headers: const <String, String>{'Accept': 'application/json'},
+          )
+          .timeout(timeout);
+    } on SocketException catch (error) {
+      throw HttpException('$connectionErrorMessage\n$error');
+    } on TimeoutException catch (error) {
+      throw TimeoutException('$timeoutMessage: $error');
+    }
   }
 
   Future<http.Response> _postJson(
@@ -234,7 +341,9 @@ class BackendApiClient {
 
   void _throwForBackendError(Map<String, dynamic> root) {
     if (root['ok'] == false) {
-      throw StateError(root['error']?.toString() ?? 'Backend returned ok=false');
+      throw StateError(
+        root['error']?.toString() ?? 'Backend returned ok=false',
+      );
     }
   }
 }
