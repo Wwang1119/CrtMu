@@ -10,7 +10,6 @@ import { findUserById } from '../repositories/user-repository.js';
 import { createArtworkCritique, createReferenceImage } from './critique-service.js';
 import { canGenerateReference } from './membership-service.js';
 import { buildUserProfile } from './profile-service.js';
-import { buildProviderImageSource } from './upload-service.js';
 import { upsertUser } from './user-service.js';
 
 function normalizeText(value) {
@@ -63,6 +62,7 @@ export async function analyzeArtwork({
   }
 
   const user = await upsertUser({ userId: normalizedUserId, studentName });
+  const { buildProviderImageSource } = await import('./upload-service.js');
   const imageSource = await buildProviderImageSource({ uploadId, imageUrl });
   const critique = await createArtworkCritique({
     imageUrl: imageSource.providerUrl,
