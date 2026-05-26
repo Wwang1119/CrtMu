@@ -37,6 +37,54 @@ usually changed to `0.0.0.0`.
 For public deployment, also set `PUBLIC_BASE_URL=https://your-domain.example`.
 This keeps uploaded image URLs correct when the backend sits behind HTTPS and a reverse proxy.
 
+## Data store
+
+The backend keeps the old JSON file repository for local development and adds
+CloudBase-native and MySQL repositories for cloud data.
+
+- `DATA_STORE=json` uses `backend/data/app-db.json` and is the default.
+- `DATA_STORE=cloudbase` uses CloudBase document database. This is the cheaper
+  CloudBase-native option and does not require CloudBase Run private networking.
+- `DATA_STORE=mysql` uses CloudBase MySQL through `DB_*` environment variables.
+
+CloudBase document database example:
+
+```env
+DATA_STORE=cloudbase
+CLOUDBASE_ENV_ID=yudu-web-8g1ccrez1a12fa8d
+CLOUDBASE_TIMEOUT_MS=15000
+CLOUDBASE_SECRETID=
+CLOUDBASE_SECRETKEY=
+```
+
+When deploying to CloudBase Run, enable API key injection in the service
+environment variable settings so `@cloudbase/node-sdk` can access the document
+database. Create these document collections before first use:
+
+- `users`
+- `uploads`
+- `artworks`
+
+For deployment diagnostics, set `ENABLE_RUNTIME_DEBUG=true` temporarily and
+call `GET /debug/runtime`. It returns only safe booleans such as whether
+`CLOUDBASE_APIKEY` and the CloudBase secret pair are present, plus the selected
+environment id and timeout. Turn it back off after checking the runtime.
+
+CloudBase MySQL example:
+
+```env
+DATA_STORE=mysql
+DB_HOST=172.17.0.10
+DB_PORT=3306
+DB_NAME=yudu-web-8g1ccrez1a12fa8d
+DB_USER=crtmu_admin
+DB_PASSWORD=
+```
+
+Fill `DB_PASSWORD` only in your local `.env` or CloudBase environment variables.
+Do not commit a real database password. The database schema is created by
+`db/init.sql`.
+
 ## Provider modes
 
 ### `AI_PROVIDER=mock`

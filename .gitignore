@@ -36,6 +36,7 @@ backend/node_modules/
 backend/.env
 backend/data/*.json
 backend/uploads/
+dist/
 
 # Symbolication related
 app.*.symbols

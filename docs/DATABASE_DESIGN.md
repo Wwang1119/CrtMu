@@ -2,6 +2,8 @@
 
 这份文档是第 5 步“云端数据表设计”的草稿。它先把业务关系讲清楚，下一步再根据这里的设计编写 CloudBase MySQL 初始化 SQL 或迁移脚本。
 
+当前第 6 步的低成本云端存储已先落到 CloudBase 文档型数据库，部署和排障细节见 `docs/CLOUDBASE_RUNBOOK.md`。MySQL 方案保留为后续正式化路径。
+
 当前本地后端仍然使用 `backend/data/app-db.json`。迁移到云端数据库时，目标是优先替换 repository 层，尽量不大改 service 层和 Flutter 接口。
 
 ## 设计原则
@@ -268,6 +270,14 @@ failed -> queued
 5. 先迁移 `users`、`uploads`、`artworks` 三张表。
 6. 确认旧接口仍然可用，再加入 `membership_orders`、`payments`、`ai_jobs`。
 7. 为开发环境准备少量种子数据，方便 Flutter 真机联调。
+
+当前第 6 步代码约定：
+
+- 默认仍使用 `DATA_STORE=json`，本地开发不需要连接云数据库。
+- 体验版 CloudBase 云托管无法启用私有网络时，可以先使用 `DATA_STORE=cloudbase` 接入 CloudBase 文档型数据库，避免为了 MySQL 内网连接过早升级标准版。
+- 设置 `DATA_STORE=mysql` 后，后端通过 `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USER`、`DB_PASSWORD` 连接 CloudBase MySQL。
+- `users`、`uploads`、`artworks` 的 MySQL repository 会保持接口返回的 camelCase 结构，避免 Flutter 感知底层变化。
+- 数据库密码只放在本地 `.env` 或 CloudBase 环境变量中，不写入 Git。
 
 ## 暂不做的事
 

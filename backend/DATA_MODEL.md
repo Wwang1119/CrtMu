@@ -1,9 +1,9 @@
 # CrtMu 后端数据模型说明
 
-当前后端仍然使用 `backend/data/app-db.json` 作为本地 JSON 文件存储。  
-这一阶段的目标不是换成 PostgreSQL，而是先把数据边界整理清楚：service 层只表达业务，repository 层负责数据读写。
+当前后端支持三种存储实现：默认 `DATA_STORE=json` 使用 `backend/data/app-db.json`，`DATA_STORE=cloudbase` 使用 CloudBase 文档型数据库，`DATA_STORE=mysql` 使用 CloudBase SQL / MySQL 8.0。
+这一阶段的目标是保持 service 层只表达业务，repository 层负责数据读写，让 Flutter 不感知底层存储切换。
 
-## 当前存储结构
+## JSON 存储结构
 
 ```json
 {
@@ -16,7 +16,7 @@
 
 ## User
 
-用户记录保存在 `users[]`。
+JSON 模式下，用户记录保存在 `users[]`；CloudBase 文档库模式下，对应 `users` 集合；MySQL 模式下，对应 `users` 表。
 
 字段：
 
@@ -34,7 +34,7 @@
 
 ## Upload
 
-上传记录保存在 `uploads[]`。
+JSON 模式下，上传记录保存在 `uploads[]`；CloudBase 文档库模式下，对应 `uploads` 集合；MySQL 模式下，对应 `uploads` 表。
 
 字段：
 
@@ -56,7 +56,7 @@
 
 ## Artwork
 
-作品记录保存在 `artworks[]`。
+JSON 模式下，作品记录保存在 `artworks[]`；CloudBase 文档库模式下，对应 `artworks` 集合；MySQL 模式下，对应 `artworks` 表。
 
 字段：
 
@@ -116,9 +116,10 @@
 当前后端有四层：
 
 - `app-store.js`：最低层 JSON 文件适配器，只负责读写整个 JSON store。
-- `user-repository.js`：负责用户读写。
-- `upload-repository.js`：负责上传记录读写。
-- `artwork-repository.js`：负责作品记录读写。
+- `json/*-json-repository.js`：JSON 文件存储实现，迁移期继续保留作为本地 fallback。
+- `cloudbase/*-cloudbase-repository.js`：CloudBase 文档型数据库实现，用于低成本云端联调。
+- `mysql/*-mysql-repository.js`：CloudBase MySQL 实现，先覆盖 `users`、`uploads`、`artworks`。
+- `user-repository.js` / `upload-repository.js` / `artwork-repository.js`：公共 repository 入口，根据 `DATA_STORE` 选择具体实现。
 
 service 层不应该直接访问 `store.users`、`store.artworks`、`store.uploads`。  
-以后换 SQLite 或 PostgreSQL 时，优先替换 repository 层，尽量不改 service 层业务逻辑。
+以后继续换 SQLite、PostgreSQL 或对象存储时，优先替换 repository 层，尽量不改 service 层业务逻辑。

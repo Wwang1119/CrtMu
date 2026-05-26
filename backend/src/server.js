@@ -4,6 +4,7 @@ import multer from 'multer';
 import path from 'node:path';
 import { config } from './config.js';
 import { AppError } from './lib/app-error.js';
+import { getCloudbaseRuntimeDiagnostics } from './repositories/cloudbase/cloudbase-client.js';
 import {
   analyzeArtwork,
   generateReferenceImage,
@@ -56,9 +57,22 @@ app.get('/health', (request, response) => {
     ok: true,
     service: 'crtmu-backend',
     provider: config.aiProvider,
+    dataStore: config.dataStore,
     modelReady: Boolean(config.arkApiKey && (config.arkTextModel || config.arkModel)),
     visionReady: Boolean(config.arkApiKey && (config.arkVisionModel || config.arkModel)),
     imageReady: Boolean(config.arkApiKey && config.arkImageModel),
+    time: new Date().toISOString(),
+  });
+});
+
+app.get('/debug/runtime', (request, response, next) => {
+  if (!config.enableRuntimeDebug) {
+    return next();
+  }
+
+  return response.json({
+    ok: true,
+    ...getCloudbaseRuntimeDiagnostics(),
     time: new Date().toISOString(),
   });
 });

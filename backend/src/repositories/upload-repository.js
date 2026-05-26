@@ -1,13 +1,20 @@
-import { readStore, withStore } from './app-store.js';
+import * as cloudbaseRepository from './cloudbase/upload-cloudbase-repository.js';
+import * as jsonRepository from './json/upload-json-repository.js';
+import * as mysqlRepository from './mysql/upload-mysql-repository.js';
+import { selectRepository } from './repository-selector.js';
 
-export async function createUploadRecord(upload) {
-  return withStore(async (store) => {
-    store.uploads.push(upload);
-    return upload;
+function repository() {
+  return selectRepository({
+    cloudbaseRepository,
+    jsonRepository,
+    mysqlRepository,
   });
 }
 
+export async function createUploadRecord(upload) {
+  return repository().createUploadRecord(upload);
+}
+
 export async function findUploadById(uploadId) {
-  const store = await readStore();
-  return store.uploads.find((item) => item.id === uploadId) ?? null;
+  return repository().findUploadById(uploadId);
 }

@@ -1,34 +1,28 @@
-import { readStore, withStore } from './app-store.js';
+import * as cloudbaseRepository from './cloudbase/artwork-cloudbase-repository.js';
+import * as jsonRepository from './json/artwork-json-repository.js';
+import * as mysqlRepository from './mysql/artwork-mysql-repository.js';
+import { selectRepository } from './repository-selector.js';
 
-function newestFirst(left, right) {
-  return right.createdAt.localeCompare(left.createdAt);
+function repository() {
+  return selectRepository({
+    cloudbaseRepository,
+    jsonRepository,
+    mysqlRepository,
+  });
 }
 
 export async function createArtworkRecord(artwork) {
-  return withStore(async (store) => {
-    store.artworks.push(artwork);
-    return artwork;
-  });
+  return repository().createArtworkRecord(artwork);
 }
 
 export async function findArtworkById(artworkId) {
-  const store = await readStore();
-  return store.artworks.find((item) => item.id === artworkId) ?? null;
+  return repository().findArtworkById(artworkId);
 }
 
 export async function listArtworksByUserId(userId) {
-  const store = await readStore();
-  return store.artworks
-    .filter((item) => item.userId === userId)
-    .sort(newestFirst);
+  return repository().listArtworksByUserId(userId);
 }
 
 export async function updateArtworkGeneration(artworkId, buildNextGeneration) {
-  return withStore(async (store) => {
-    const artwork = store.artworks.find((item) => item.id === artworkId);
-    if (!artwork) return null;
-
-    artwork.generation = buildNextGeneration(artwork.generation ?? {});
-    return artwork;
-  });
+  return repository().updateArtworkGeneration(artworkId, buildNextGeneration);
 }

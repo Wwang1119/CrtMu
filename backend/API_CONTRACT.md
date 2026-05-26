@@ -39,6 +39,7 @@
   "ok": true,
   "service": "crtmu-backend",
   "provider": "mock",
+  "dataStore": "json",
   "modelReady": false,
   "visionReady": false,
   "imageReady": false,
