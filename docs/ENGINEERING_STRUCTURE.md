@@ -41,11 +41,13 @@
 - `backend/src/server.js`：路由入口和请求字段规范化。
 - `backend/src/services/`：业务逻辑。
 - `backend/src/providers/`：AI provider 适配。
-- `backend/src/repositories/`：当前 JSON 文件存储。
+- `backend/src/repositories/`：数据和文件存储边界。业务记录可以走 JSON、CloudBase 文档型数据库或 MySQL；上传图片本体可以走本地 `uploads/` 或 CloudBase 云存储。
 - `backend/API_CONTRACT.md`：Flutter 和后端之间的接口契约。
 
 ## 当前刻意不做的事
 
 - 暂不引入 Riverpod/Bloc，避免第一轮重构同时改变状态管理方式。
-- 暂不迁移数据库，JSON 文件仍适合这个阶段学习和本地验证。
-- 暂不做登录、支付、对象存储和 CI/CD，它们属于结构稳定后的后续工程能力。
+- 暂不做手机号 / 微信登录和真实支付。
+- 暂不做完整 UI，先保证每条后端链路能被当前聊天界面验证。
+- 暂不迁移到 MySQL；当前低成本云端路径已经采用 CloudBase 文档型数据库。
+- 暂不把 CloudBase 云存储细节散落到业务服务里，继续通过 repository / service 边界封装。

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { config } from './config.js';
 import { AppError } from './lib/app-error.js';
 import { getCloudbaseRuntimeDiagnostics } from './repositories/cloudbase/cloudbase-client.js';
+import { getUploadStorageMode } from './repositories/upload-file-repository.js';
 import {
   analyzeArtwork,
   generateReferenceImage,
@@ -58,6 +59,7 @@ app.get('/health', (request, response) => {
     service: 'crtmu-backend',
     provider: config.aiProvider,
     dataStore: config.dataStore,
+    uploadStorage: getUploadStorageMode(),
     modelReady: Boolean(config.arkApiKey && (config.arkTextModel || config.arkModel)),
     visionReady: Boolean(config.arkApiKey && (config.arkVisionModel || config.arkModel)),
     imageReady: Boolean(config.arkApiKey && config.arkImageModel),

@@ -44,15 +44,19 @@ JSON 模式下，上传记录保存在 `uploads[]`；CloudBase 文档库模式�
 - `originalName`：用户上传时的原始文件名。
 - `mimeType`：文件 MIME 类型。
 - `size`：文件大小，单位 byte。
-- `path`：服务器本地文件路径。
-- `localUrl`：后端静态文件访问 URL。
+- `storage`：文件存储位置，当前为 `local` 或 `cloudbase`。
+- `fileId`：CloudBase 云存储文件 ID，本地模式为空。
+- `cloudPath`：CloudBase 云存储对象路径，本地模式为空。
+- `path`：本地降级模式下的服务器文件路径；CloudBase 模式下为空。
+- `localUrl`：兼容 Flutter 的可显示 URL。本地模式是后端静态文件 URL；CloudBase 模式是临时访问 URL。
 - `createdAt`：上传时间，ISO 字符串。
 
 当前规则：
 
 - 只允许图片上传。
-- 文件仍保存在本地 `uploads/` 目录。
-- 后续正式部署时，可以把文件迁移到对象存储，但 service 层应继续通过 upload repository 查询上传记录。
+- `DATA_STORE=cloudbase` 且 `UPLOAD_STORAGE=auto` 时，图片本体上传到 CloudBase 云存储 / COS，数据库只保存 `fileId`、`cloudPath` 和元数据。
+- `DATA_STORE=json` 或 `UPLOAD_STORAGE=local` 时，文件保存在本地 `uploads/` 目录，便于 mock 联调。
+- service 层通过上传记录和文件存储 repository 获取 provider 可用的图片来源，不直接依赖某个固定本地目录。
 
 ## Artwork
 

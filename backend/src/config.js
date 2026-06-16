@@ -22,13 +22,21 @@ function readNumberEnv(name, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+const dataStore = readEnv('DATA_STORE', 'json').toLowerCase();
+
 export const config = {
   port: readNumberEnv('PORT', 3000),
   host: readEnv('HOST', '127.0.0.1'),
   publicBaseUrl: readEnv('PUBLIC_BASE_URL'),
-  dataStore: readEnv('DATA_STORE', 'json').toLowerCase(),
+  dataStore,
+  uploadStorage: readEnv('UPLOAD_STORAGE', 'auto').toLowerCase(),
   cloudbaseEnvId: readEnv('CLOUDBASE_ENV_ID') || readEnv('TCB_ENV_ID'),
   cloudbaseTimeoutMs: readNumberEnv('CLOUDBASE_TIMEOUT_MS', 15000),
+  cloudbaseStoragePrefix: readEnv('CLOUDBASE_STORAGE_PREFIX', 'uploads'),
+  cloudbaseTempUrlMaxAgeSeconds: readNumberEnv(
+    'CLOUDBASE_TEMP_URL_MAX_AGE_SECONDS',
+    24 * 60 * 60,
+  ),
   enableRuntimeDebug: readEnv('ENABLE_RUNTIME_DEBUG', 'false').toLowerCase() === 'true',
   db: {
     host: readEnv('DB_HOST', '127.0.0.1'),

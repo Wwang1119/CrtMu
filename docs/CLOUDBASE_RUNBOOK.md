@@ -12,10 +12,13 @@ document database with:
 - CloudBase environment: `apps-prod`
 - Environment ID: `yudu-web-8g1ccrez1a12fa8d`
 - Data store mode: `DATA_STORE=cloudbase`
+- Upload storage mode: `UPLOAD_STORAGE=auto` or `UPLOAD_STORAGE=cloudbase`
 - Collections:
   - `users`
   - `uploads`
   - `artworks`
+- Cloud storage prefix:
+  - `uploads/`
 
 Verified endpoints:
 
@@ -30,22 +33,30 @@ Verified endpoints:
 HOST=0.0.0.0
 PORT=3000
 DATA_STORE=cloudbase
+UPLOAD_STORAGE=auto
 CLOUDBASE_ENV_ID=yudu-web-8g1ccrez1a12fa8d
 CLOUDBASE_TIMEOUT_MS=15000
+CLOUDBASE_STORAGE_PREFIX=uploads
+CLOUDBASE_TEMP_URL_MAX_AGE_SECONDS=86400
 AI_PROVIDER=mock
 CLOUDBASE_APIKEY=...
-CLOUDBASE_SECRETID=...
-CLOUDBASE_SECRETKEY=...
+CLOUDBASE_SECRET_ID=...
+CLOUDBASE_SECRET_KEY=...
 ENABLE_RUNTIME_DEBUG=false
 ```
 
 Important:
 
 - `CLOUDBASE_APIKEY` is the CloudBase server API key.
-- `CLOUDBASE_SECRETID` and `CLOUDBASE_SECRETKEY` are the Tencent Cloud CAM
+- `CLOUDBASE_SECRET_ID` and `CLOUDBASE_SECRET_KEY` are the Tencent Cloud CAM
   API key pair. Prefer a sub-user key, not the main account key.
+- Existing deployments that already use `CLOUDBASE_SECRETID` and
+  `CLOUDBASE_SECRETKEY` continue to work as aliases.
 - Do not commit or screenshot real values.
 - Keep `ENABLE_RUNTIME_DEBUG=false` after diagnosis.
+- In CloudBase storage mode, the `uploads` collection stores `fileId`,
+  `cloudPath`, `localUrl`, MIME type, size, timestamps, and user ownership. It
+  does not store image binary content.
 
 ## Root Cause Of The 2026-05-25 Timeout
 
@@ -73,7 +84,8 @@ secretKey: process.env.CLOUDBASE_SECRETKEY
 After adding a CAM sub-user key pair to CloudBase Run and deploying v6, document
 database reads succeeded. The key lesson: for this backend deployment,
 `CLOUDBASE_APIKEY` alone was not enough; the Node SDK needed
-`CLOUDBASE_SECRETID` and `CLOUDBASE_SECRETKEY`.
+`CLOUDBASE_SECRETID` and `CLOUDBASE_SECRETKEY`. Current code also accepts the
+clearer `CLOUDBASE_SECRET_ID` and `CLOUDBASE_SECRET_KEY` names.
 
 ## Repository Behavior
 
@@ -114,8 +126,10 @@ Expected safe diagnostic values:
 
 ```text
 dataStore                 : cloudbase
+uploadStorage             : auto
 cloudbaseEnvId            : yudu-web-8g1ccrez1a12fa8d
 cloudbaseTimeoutMs        : 15000
+cloudbaseStoragePrefix    : uploads
 hasCloudbaseApiKey        : True
 hasCloudbaseSecretPair    : True
 ```

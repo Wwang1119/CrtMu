@@ -2,31 +2,44 @@ import { config } from '../../config.js';
 import { AppError } from '../../lib/app-error.js';
 
 let databasePromise;
+let appPromise;
 
 function readSecretEnv(name) {
   const value = process.env[name];
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function readSecretEnvAlias(...names) {
+  for (const name of names) {
+    const value = readSecretEnv(name);
+    if (value) return value;
+  }
+
+  return '';
+}
+
 function hasTencentCloudSecretPair() {
   return Boolean(
-    readSecretEnv('TENCENTCLOUD_SECRETID') &&
-    readSecretEnv('TENCENTCLOUD_SECRETKEY'),
+    readSecretEnvAlias('TENCENTCLOUD_SECRET_ID', 'TENCENTCLOUD_SECRETID') &&
+    readSecretEnvAlias('TENCENTCLOUD_SECRET_KEY', 'TENCENTCLOUD_SECRETKEY'),
   );
 }
 
 function hasCloudbaseSecretPair() {
   return Boolean(
-    readSecretEnv('CLOUDBASE_SECRETID') &&
-    readSecretEnv('CLOUDBASE_SECRETKEY'),
+    readSecretEnvAlias('CLOUDBASE_SECRET_ID', 'CLOUDBASE_SECRETID') &&
+    readSecretEnvAlias('CLOUDBASE_SECRET_KEY', 'CLOUDBASE_SECRETKEY'),
   );
 }
 
 export function getCloudbaseRuntimeDiagnostics() {
   return {
     dataStore: config.dataStore,
+    uploadStorage: config.uploadStorage,
     cloudbaseEnvId: config.cloudbaseEnvId || '',
     cloudbaseTimeoutMs: config.cloudbaseTimeoutMs,
+    cloudbaseStoragePrefix: config.cloudbaseStoragePrefix,
+    cloudbaseTempUrlMaxAgeSeconds: config.cloudbaseTempUrlMaxAgeSeconds,
     hasCloudbaseApiKey: Boolean(readSecretEnv('CLOUDBASE_APIKEY')),
     hasCloudbaseSecretPair: hasCloudbaseSecretPair(),
     hasTencentCloudSecretPair: hasTencentCloudSecretPair(),
@@ -34,7 +47,7 @@ export function getCloudbaseRuntimeDiagnostics() {
   };
 }
 
-async function createDatabase() {
+async function createCloudbaseApp() {
   let cloudbaseModule;
 
   try {
@@ -50,11 +63,11 @@ async function createDatabase() {
   const cloudbase = cloudbaseModule.default ?? cloudbaseModule;
   const env = config.cloudbaseEnvId || cloudbase.SYMBOL_CURRENT_ENV;
   const secretId =
-    readSecretEnv('CLOUDBASE_SECRETID') ||
-    readSecretEnv('TENCENTCLOUD_SECRETID');
+    readSecretEnvAlias('CLOUDBASE_SECRET_ID', 'CLOUDBASE_SECRETID') ||
+    readSecretEnvAlias('TENCENTCLOUD_SECRET_ID', 'TENCENTCLOUD_SECRETID');
   const secretKey =
-    readSecretEnv('CLOUDBASE_SECRETKEY') ||
-    readSecretEnv('TENCENTCLOUD_SECRETKEY');
+    readSecretEnvAlias('CLOUDBASE_SECRET_KEY', 'CLOUDBASE_SECRETKEY') ||
+    readSecretEnvAlias('TENCENTCLOUD_SECRET_KEY', 'TENCENTCLOUD_SECRETKEY');
   const initOptions = {
     env,
     timeout: config.cloudbaseTimeoutMs,
@@ -67,8 +80,16 @@ async function createDatabase() {
 
   console.log('CloudBase data store init:', getCloudbaseRuntimeDiagnostics());
 
-  const app = cloudbase.init(initOptions);
+  return cloudbase.init(initOptions);
+}
 
+export async function getCloudbaseApp() {
+  appPromise ??= createCloudbaseApp();
+  return appPromise;
+}
+
+async function createDatabase() {
+  const app = await getCloudbaseApp();
   return app.database();
 }
 

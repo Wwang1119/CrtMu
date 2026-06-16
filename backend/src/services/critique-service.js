@@ -58,7 +58,7 @@ export async function createArtworkCritique(input) {
   }
 }
 
-export async function createReferenceImage({ artwork }) {
+export async function createReferenceImage({ artwork, referenceImageUrl }) {
   switch (config.aiProvider) {
     case 'mock':
       return createMockReferenceImage({ artwork });
@@ -69,7 +69,7 @@ export async function createReferenceImage({ artwork }) {
         baseUrl: config.arkBaseUrl,
         imageModel: config.arkImageModel,
         prompt: artwork.generation.prompt,
-        referenceImageUrl: artwork.imageUrl,
+        referenceImageUrl: referenceImageUrl || artwork.imageUrl,
         timeoutMs: config.arkTimeoutMs,
         imageSize: config.arkImageSize,
         watermark: config.arkImageWatermark,

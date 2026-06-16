@@ -25,6 +25,7 @@ Flutter 客户端 -> Node.js 后端 -> AI provider（mock / Ark / Doubao）
 - `lib/features/artwork/` 负责作品分析模型和点评文案格式化
 - `lib/core/api/backend_api_client.dart` 负责 Flutter 访问后端
 - `backend/src/` 保持 route / service / provider / repository 分层
+- 后端已支持 CloudBase 文档型数据库；图片上传可在本地 `uploads/` 和 CloudBase 云存储之间按环境变量切换
 
 更详细的结构说明见：
 
@@ -98,6 +99,31 @@ http://127.0.0.1:3000
 ```bash
 curl http://127.0.0.1:3000/health
 ```
+
+## 数据和图片存储
+
+本地学习和 mock 联调时可以继续使用默认配置：
+
+```env
+DATA_STORE=json
+UPLOAD_STORAGE=auto
+AI_PROVIDER=mock
+```
+
+这时上传图片会写入 `backend/uploads/`，上传记录会写入 `backend/data/app-db.json`。
+
+部署到 CloudBase 时，当前推荐使用 CloudBase 文档型数据库保存业务记录，并使用 CloudBase 云存储 / COS 保存图片本体：
+
+```env
+DATA_STORE=cloudbase
+UPLOAD_STORAGE=auto
+CLOUDBASE_ENV_ID=你的 CloudBase 环境 ID
+CLOUDBASE_STORAGE_PREFIX=uploads
+CLOUDBASE_SECRET_ID=你的 CAM SecretId
+CLOUDBASE_SECRET_KEY=你的 CAM SecretKey
+```
+
+也可以显式设置 `UPLOAD_STORAGE=cloudbase`。不要把真实密钥提交到仓库；如果暂时没有云端凭证，就保持 `DATA_STORE=json` 或 `UPLOAD_STORAGE=local` 走本地降级链路。后端返回给 Flutter 的 `upload.id` 和 `upload.localUrl` 仍保持兼容，其中云存储模式下的 `localUrl` 是可显示的临时访问 URL。
 
 ## 后端模式
 

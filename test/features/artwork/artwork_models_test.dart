@@ -7,11 +7,13 @@ void main() {
     test('parse upload response payload', () {
       final upload = BackendUpload.fromJson({
         'id': 'upload-1',
-        'localUrl': 'http://127.0.0.1:3000/uploads/a.jpg',
+        'localUrl': 'https://example.tcb.qcloud.la/temp-download-url',
+        'fileId': 'cloud://env-id/uploads/user/2026/05/26/upload-1.jpg',
+        'cloudPath': 'uploads/user/2026/05/26/upload-1.jpg',
       });
 
       expect(upload.id, 'upload-1');
-      expect(upload.localUrl, contains('/uploads/a.jpg'));
+      expect(upload.localUrl, startsWith('https://'));
     });
 
     test('parse artwork analysis response payload', () {

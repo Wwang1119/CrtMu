@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import multer from 'multer';
 import { AppError } from '../lib/app-error.js';
@@ -8,23 +6,18 @@ import {
   createUploadRecord,
   findUploadById,
 } from '../repositories/upload-repository.js';
+import {
+  buildProviderImageSource as buildStoredFileProviderImageSource,
+  saveUploadFile,
+  uploadsDirectory,
+} from '../repositories/upload-file-repository.js';
 
-export const uploadsDirectory = path.join(process.cwd(), 'uploads');
-mkdirSync(uploadsDirectory, { recursive: true });
+export { uploadsDirectory };
 
 function normalizeExtension(filename) {
   const ext = path.extname(filename || '').toLowerCase();
   return ext || '.jpg';
 }
-
-const storage = multer.diskStorage({
-  destination: (request, file, callback) => {
-    callback(null, uploadsDirectory);
-  },
-  filename: (request, file, callback) => {
-    callback(null, `${randomUUID()}${normalizeExtension(file.originalname)}`);
-  },
-});
 
 function fileFilter(request, file, callback) {
   if (typeof file.mimetype === 'string' && file.mimetype.startsWith('image/')) {
@@ -36,7 +29,7 @@ function fileFilter(request, file, callback) {
 }
 
 export const imageUploadMiddleware = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
     fileSize: 12 * 1024 * 1024,
@@ -52,16 +45,37 @@ export async function registerUpload({ file, requestBaseUrl, userId }) {
     throw new AppError(400, 'file is required.');
   }
 
+  if (!file.buffer) {
+    throw new AppError(400, 'Uploaded file buffer is missing.');
+  }
+
+  const uploadId = randomUUID();
+  const createdAt = new Date().toISOString();
+  const filename = `${uploadId}${normalizeExtension(file.originalname)}`;
+  const normalizedUserId = String(userId || '').trim() || null;
+  const storedFile = await saveUploadFile({
+    buffer: file.buffer,
+    filename,
+    mimeType: file.mimetype,
+    uploadId,
+    userId: normalizedUserId,
+    createdAt,
+    requestBaseUrl: normalizeBaseUrl(requestBaseUrl),
+  });
+
   const upload = {
-    id: randomUUID(),
-    userId: String(userId || '').trim() || null,
-    filename: file.filename,
+    id: uploadId,
+    userId: normalizedUserId,
+    filename,
     originalName: file.originalname,
     mimeType: file.mimetype,
     size: file.size,
-    path: file.path,
-    localUrl: `${normalizeBaseUrl(requestBaseUrl)}/uploads/${file.filename}`,
-    createdAt: new Date().toISOString(),
+    storage: storedFile.storage,
+    fileId: storedFile.fileId,
+    cloudPath: storedFile.cloudPath,
+    path: storedFile.path,
+    localUrl: storedFile.localUrl,
+    createdAt,
   };
 
   return createUploadRecord(upload);
@@ -93,11 +107,11 @@ export async function buildProviderImageSource({ uploadId, imageUrl }) {
   }
 
   const upload = await getUpload(normalizedUploadId);
-  const fileBuffer = await readFile(upload.path);
+  const storedFileSource = await buildStoredFileProviderImageSource(upload);
   return {
     uploadId: upload.id,
-    displayUrl: upload.localUrl,
-    providerUrl: `data:${upload.mimeType};base64,${fileBuffer.toString('base64')}`,
-    mimeType: upload.mimeType,
+    displayUrl: storedFileSource.displayUrl,
+    providerUrl: storedFileSource.providerUrl,
+    mimeType: storedFileSource.mimeType,
   };
 }

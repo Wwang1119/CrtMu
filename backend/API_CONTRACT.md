@@ -40,6 +40,7 @@
   "service": "crtmu-backend",
   "provider": "mock",
   "dataStore": "json",
+  "uploadStorage": "local",
   "modelReady": false,
   "visionReady": false,
   "imageReady": false,
@@ -113,7 +114,32 @@ Flutter 当前依赖字段：
     "size": 123456,
     "path": "uploads/generated-file-name.jpg",
     "localUrl": "http://127.0.0.1:3000/uploads/generated-file-name.jpg",
+    "storage": "local",
+    "fileId": null,
+    "cloudPath": null,
     "createdAt": "2026-05-21T00:00:00.000Z"
+  }
+}
+```
+
+CloudBase 云存储模式下，响应仍然保留 `upload.id` 和 `upload.localUrl`，但 `localUrl` 表示可显示的临时访问 URL，不再表示后端本地目录。例如：
+
+```json
+{
+  "ok": true,
+  "upload": {
+    "id": "upload-id",
+    "userId": "user_me",
+    "filename": "upload-id.jpg",
+    "originalName": "artwork.jpg",
+    "mimeType": "image/jpeg",
+    "size": 123456,
+    "storage": "cloudbase",
+    "fileId": "cloud://env-id.uploads/user_me/2026/05/26/upload-id.jpg",
+    "cloudPath": "uploads/user_me/2026/05/26/upload-id.jpg",
+    "path": "",
+    "localUrl": "https://example.tcb.qcloud.la/temp-download-url",
+    "createdAt": "2026-05-26T00:00:00.000Z"
   }
 }
 ```
@@ -123,7 +149,16 @@ Flutter 当前依赖字段：
 - `upload.id`
 - `upload.localUrl`
 
-注意：真实模型生成或图片编辑通常需要公网可访问图片 URL。本地开发时，mock 模式可以直接使用本地上传地址。
+新增后端保存字段：
+
+- `fileId`：CloudBase 云存储文件 ID，本地模式为 `null`
+- `cloudPath`：云存储对象路径，本地模式为 `null`
+- `mimeType`：图片 MIME 类型
+- `size`：文件大小，单位 byte
+- `createdAt`：上传记录创建时间
+- `userId`：上传用户 ID，可为空
+
+注意：数据库只保存文件引用和元数据，不保存图片二进制内容。真实模型生成或图片编辑通常需要 provider 可访问的图片来源；后端会在 `POST /v1/artworks/analyze` 中通过 `uploadId` 查询上传记录，并在 CloudBase 模式下生成新的临时 URL 传给 provider。本地开发时，mock 模式可以继续使用本地上传地址或 data URL。
 
 ## `POST /v1/artworks/analyze`
 

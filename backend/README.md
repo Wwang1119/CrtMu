@@ -51,15 +51,24 @@ CloudBase document database example:
 
 ```env
 DATA_STORE=cloudbase
+UPLOAD_STORAGE=auto
 CLOUDBASE_ENV_ID=yudu-web-8g1ccrez1a12fa8d
 CLOUDBASE_TIMEOUT_MS=15000
-CLOUDBASE_SECRETID=
-CLOUDBASE_SECRETKEY=
+CLOUDBASE_STORAGE_PREFIX=uploads
+CLOUDBASE_SECRET_ID=
+CLOUDBASE_SECRET_KEY=
 ```
 
-When deploying to CloudBase Run, enable API key injection in the service
-environment variable settings so `@cloudbase/node-sdk` can access the document
-database. Create these document collections before first use:
+When `UPLOAD_STORAGE=auto`, CloudBase document mode also uploads image bytes to
+CloudBase cloud storage / COS. The `uploads` collection stores only `fileId`,
+`cloudPath`, `localUrl` and metadata, not the image binary.
+
+When deploying to CloudBase Run, enable API key injection or provide a CAM
+secret pair in the service environment variable settings so
+`@cloudbase/node-sdk` can access the document database and cloud storage. The
+code also accepts the older aliases `CLOUDBASE_SECRETID` and
+`CLOUDBASE_SECRETKEY` for existing deployments. Create these document
+collections before first use:
 
 - `users`
 - `uploads`
@@ -120,12 +129,16 @@ For artwork critique, the backend now also supports:
 During local development, uploaded files are converted into a data URL before
 the image critique request is sent to the model.
 
-Reference image generation uses a separate image model configuration and stores
-the generated result URL back into the artwork archive.
+In CloudBase storage mode, uploaded files are saved to cloud storage first. The
+analysis and reference generation flows resolve `uploadId` into a fresh
+temporary URL before calling the provider, while the Flutter response still
+keeps the compatible `upload.localUrl` field for display.
 
-For real image generation, the source image should be a public URL. In local
-development, `localhost` uploads are fine for mock mode, but real Ark image
-editing should eventually move to object storage.
+Reference image generation uses a separate image model configuration and stores
+the generated result URL back into the artwork archive. For real image
+generation, use CloudBase storage or another public image URL source; local
+`uploads/` URLs are only suitable for mock mode and local data-URL based
+analysis experiments.
 
 ## Next steps
 

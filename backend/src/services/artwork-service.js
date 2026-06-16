@@ -129,6 +129,17 @@ export async function generateReferenceImage(artworkId) {
   assertCanGenerateReference(user);
 
   const startedAt = new Date().toISOString();
+  let referenceImageUrl = artwork.imageUrl;
+
+  if (artwork.uploadId) {
+    const { buildProviderImageSource } = await import('./upload-service.js');
+    const imageSource = await buildProviderImageSource({
+      uploadId: artwork.uploadId,
+      imageUrl: '',
+    });
+    referenceImageUrl = imageSource.providerUrl;
+  }
+
   const generated = await createReferenceImage({
     artwork: {
       ...artwork,
@@ -138,6 +149,7 @@ export async function generateReferenceImage(artworkId) {
         startedAt,
       },
     },
+    referenceImageUrl,
   });
 
   const updatedArtwork = await updateArtworkGeneration(

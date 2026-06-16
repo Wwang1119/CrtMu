@@ -4,7 +4,7 @@
 
 当前第 6 步的低成本云端存储已先落到 CloudBase 文档型数据库，部署和排障细节见 `docs/CLOUDBASE_RUNBOOK.md`。MySQL 方案保留为后续正式化路径。
 
-当前本地后端仍然使用 `backend/data/app-db.json`。迁移到云端数据库时，目标是优先替换 repository 层，尽量不大改 service 层和 Flutter 接口。
+当前本地后端仍然可以使用 `backend/data/app-db.json`。云端低成本路径已经支持 `DATA_STORE=cloudbase` 使用 CloudBase 文档型数据库，并通过 `UPLOAD_STORAGE=cloudbase` 或 `UPLOAD_STORAGE=auto` 把图片本体保存到 CloudBase 云存储 / COS。后续继续迁移时，目标仍然是优先替换 repository 层，尽量不大改 service 层和 Flutter 接口。
 
 ## 设计原则
 
