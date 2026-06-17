@@ -37,6 +37,8 @@ backend/.env
 backend/data/*.json
 backend/uploads/
 dist/
+crtmu-backend-cloudbase-v*.zip
+_cloudbase_package_*_stage/
 
 # Symbolication related
 app.*.symbols

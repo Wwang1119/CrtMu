@@ -1,16 +1,21 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export const localUploadsDirectory = path.join(process.cwd(), 'uploads');
+export function getLocalUploadsDirectory() {
+  return path.join(process.cwd(), 'uploads');
+}
+
+export const localUploadsDirectory = getLocalUploadsDirectory();
 
 function normalizeBaseUrl(baseUrl) {
   return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 }
 
 export async function saveUploadFile({ buffer, filename, requestBaseUrl }) {
-  await mkdir(localUploadsDirectory, { recursive: true });
+  const uploadsDirectory = getLocalUploadsDirectory();
+  await mkdir(uploadsDirectory, { recursive: true });
 
-  const localPath = path.join(localUploadsDirectory, filename);
+  const localPath = path.join(uploadsDirectory, filename);
   await writeFile(localPath, buffer);
 
   return {

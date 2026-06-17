@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { access, mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -25,7 +25,9 @@ test('local upload file repository writes files and builds data URLs', async () 
     assert.equal(stored.storage, 'local');
     assert.equal(stored.fileId, null);
     assert.equal(stored.cloudPath, null);
+    assert.equal(path.dirname(stored.path), path.join(tempCwd, 'uploads'));
     assert.equal(stored.localUrl, 'http://127.0.0.1:3000/uploads/upload-1.jpg');
+    await access(stored.path);
 
     const source = await buildProviderImageSource({
       path: stored.path,

@@ -53,6 +53,15 @@ function requireString(value, fieldName) {
   return normalized;
 }
 
+app.get('/', (request, response) => {
+  response.json({
+    ok: true,
+    service: 'crtmu-backend',
+    dataStore: config.dataStore,
+    uploadStorage: getUploadStorageMode(),
+  });
+});
+
 app.get('/health', (request, response) => {
   response.json({
     ok: true,
