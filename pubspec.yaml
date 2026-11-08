@@ -1,5 +1,5 @@
 name: art_assistant
-description: "A new Flutter project."
+description: "CrtMu：支持聊天、作品点评与参考图生成的 AI 美术助教应用。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

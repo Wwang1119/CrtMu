@@ -1,6 +1,6 @@
 # CrtMu 工程化结构说明
 
-这份文档记录第一轮工程化改造后的边界。目标不是把项目做复杂，而是让每段代码有清晰职责。
+这份文档记录当前代码的主要边界。开发进度与后续任务见 [PROJECT_STATUS.md](PROJECT_STATUS.md)。
 
 ## Flutter client
 
@@ -34,6 +34,12 @@
 
 学习点：UI 层只知道“我要发送文本/上传图片”，不关心 HTTP header、URL、超时和错误细节。
 
+### User feature
+
+- `lib/features/user/services/local_user_identity_service.dart`：生成并持久化设备本地用户 ID。
+- `lib/features/user/models/user_profile_models.dart`：用户与档案响应模型。
+- 聊天页提供基础用户状态入口；设备 ID 不等同于正式登录认证。
+
 ## Backend
 
 后端继续保持当前分层：
@@ -49,5 +55,5 @@
 - 暂不引入 Riverpod/Bloc，避免第一轮重构同时改变状态管理方式。
 - 暂不做手机号 / 微信登录和真实支付。
 - 暂不做完整 UI，先保证每条后端链路能被当前聊天界面验证。
-- 暂不迁移到 MySQL；当前低成本云端路径已经采用 CloudBase 文档型数据库。
+- MySQL 适配代码已经存在；当前云端开发路径以 CloudBase 文档型数据库为主，切换存储前需单独验证。
 - 暂不把 CloudBase 云存储细节散落到业务服务里，继续通过 repository / service 边界封装。

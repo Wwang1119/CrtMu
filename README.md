@@ -1,108 +1,49 @@
-# CrtMu
+# CrtMu · AI 美术助教
 
-CrtMu 是一个 AI 美术助教项目。当前版本的核心能力是：用户在 Flutter 客户端里聊天、上传作品图片，后端负责接收请求、保存上传文件，并通过 AI provider 返回文字点评、作品分析和参考图生成结果。
+CrtMu 是一个开发中的 AI 美术助教应用：通过聊天和上传画作，提供作品点评、学习建议与参考图。Flutter 客户端位于仓库根目录，Node.js 后端位于 `backend/`。
 
-这个仓库目前由两部分组成：
+## 开发入口
 
-- Flutter 客户端：项目根目录
-- Node.js 后端：`backend/`
+| 要做的事 | 从这里开始 |
+| --- | --- |
+| 启动与联调 | 本页的「本地运行」 |
+| 查看当前进度与待办 | [开发状态与待办](docs/PROJECT_STATUS.md) |
+| 找代码、了解职责 | [工程结构](docs/ENGINEERING_STRUCTURE.md) |
+| 修改接口或数据结构 | [接口契约](backend/API_CONTRACT.md)、[数据模型](backend/DATA_MODEL.md)、[数据库设计](docs/DATABASE_DESIGN.md) |
+| 配置和部署后端 | [后端说明](backend/README.md)、[部署说明](backend/DEPLOYMENT.md)、[CloudBase 运维说明](docs/CLOUDBASE_RUNBOOK.md) |
+| 准备 iOS 发布 | [App Store 检查清单](APPSTORE_CHECKLIST.md) |
 
-主链路是：
+## 当前能力与边界
+
+代码已包含文本聊天、图片上传、结构化作品分析、参考图生成接口、作品档案、设备本地用户 ID，以及开发用 free / pro 会员状态。后端支持 mock 与 Ark / Doubao provider，业务记录可使用 JSON、CloudBase 文档数据库或 MySQL，图片可保存在本地或 CloudBase 云存储。
+
+以上是仓库中的实现范围，不代表云端已部署或所有平台都已验证。设备用户 ID 还不是正式账号认证；会员切换接口用于开发，真实登录、支付与生产鉴权仍需完善。当前优先用 mock 在本地跑通完整流程。
 
 ```text
-Flutter 客户端 -> Node.js 后端 -> AI provider（mock / Ark / Doubao）
+Flutter 客户端 → Node.js 后端 → AI provider
+                         ├─ 业务数据：JSON / CloudBase / MySQL
+                         └─ 图片：本地文件 / CloudBase 云存储
 ```
 
-这样设计的原因是：模型密钥不能放在 App 客户端里，上传、超时、日志、会员权限和未来支付状态也应该统一放在后端处理。
+## 环境要求
 
-## 当前状态
+- Flutter SDK：需包含 Dart 3.11.1 或更高的兼容 3.x 版本，见 [pubspec.yaml](pubspec.yaml)；未单独固定 Flutter 版本。
+- Node.js 20+ 与 npm，后端依赖已提交锁文件。
+- iOS/macOS 开发需要 macOS、Xcode 和 CocoaPods；Android 开发需要 Android SDK。
 
-当前项目已经完成第一轮工程化整理：
+## 本地运行
 
-- `lib/main.dart` 只保留启动入口
-- `lib/app.dart` 负责 App 主题和首页挂载
-- `lib/features/chat/` 负责聊天页面、聊天 UI、聊天缓存
-- `lib/features/artwork/` 负责作品分析模型和点评文案格式化
-- `lib/core/api/backend_api_client.dart` 负责 Flutter 访问后端
-- `backend/src/` 保持 route / service / provider / repository 分层
-- 后端已支持 CloudBase 文档型数据库；图片上传可在本地 `uploads/` 和 CloudBase 云存储之间按环境变量切换
-
-更详细的结构说明见：
-
-- `docs/ENGINEERING_STRUCTURE.md`
-- `docs/DATABASE_DESIGN.md`
-- `backend/DATA_MODEL.md`
-- `backend/API_CONTRACT.md`
-
-## 如何运行前端
-
-先安装 Flutter 依赖：
+### 1. 启动后端
 
 ```bash
-flutter pub get
-```
-
-本机运行 Flutter：
-
-```bash
-flutter run
-```
-
-指定后端地址运行：
-
-```bash
-flutter run --dart-define=BACKEND_BASE_URL=http://127.0.0.1:3000
-```
-
-Android 模拟器访问电脑本机后端时，要用：
-
-```bash
-flutter run --dart-define=BACKEND_BASE_URL=http://10.0.2.2:3000
-```
-
-真机调试时，要把 `127.0.0.1` 换成电脑在同一 Wi-Fi 下的局域网 IP。
-
-## 如何运行后端
-
-进入后端目录：
-
-```bash
-cd backend
-```
-
-安装依赖：
-
-```bash
-npm install
-```
-
-复制环境变量示例：
-
-```bash
-copy .env.example .env
-```
-
-启动开发服务器：
-
-```bash
+git clone https://github.com/Wwang1119/CrtMu.git
+cd CrtMu/backend
+cp .env.example .env
+npm ci
 npm run dev
 ```
 
-后端默认地址：
-
-```text
-http://127.0.0.1:3000
-```
-
-检查后端是否启动成功：
-
-```bash
-curl http://127.0.0.1:3000/health
-```
-
-## 数据和图片存储
-
-本地学习和 mock 联调时可以继续使用默认配置：
+Windows 命令提示符中使用 `copy .env.example .env`。首次运行保持以下本地配置，无需模型或云服务凭证：
 
 ```env
 DATA_STORE=json
@@ -110,115 +51,70 @@ UPLOAD_STORAGE=auto
 AI_PROVIDER=mock
 ```
 
-这时上传图片会写入 `backend/uploads/`，上传记录会写入 `backend/data/app-db.json`。
-
-部署到 CloudBase 时，当前推荐使用 CloudBase 文档型数据库保存业务记录，并使用 CloudBase 云存储 / COS 保存图片本体：
-
-```env
-DATA_STORE=cloudbase
-UPLOAD_STORAGE=auto
-CLOUDBASE_ENV_ID=你的 CloudBase 环境 ID
-CLOUDBASE_STORAGE_PREFIX=uploads
-CLOUDBASE_SECRET_ID=你的 CAM SecretId
-CLOUDBASE_SECRET_KEY=你的 CAM SecretKey
-```
-
-也可以显式设置 `UPLOAD_STORAGE=cloudbase`。不要把真实密钥提交到仓库；如果暂时没有云端凭证，就保持 `DATA_STORE=json` 或 `UPLOAD_STORAGE=local` 走本地降级链路。后端返回给 Flutter 的 `upload.id` 和 `upload.localUrl` 仍保持兼容，其中云存储模式下的 `localUrl` 是可显示的临时访问 URL。
-
-## 后端模式
-
-当前后端支持两种 provider 模式：
-
-- `AI_PROVIDER=mock`：本地假数据模式，不会请求真实模型，适合学习和联调
-- `AI_PROVIDER=ark`：通过 Ark / Doubao 调用真实模型
-
-刚开始开发时建议使用 `mock`，先把 Flutter 和后端链路跑通，再接真实模型。
-
-## 常用接口
-
-当前 Flutter 主要依赖这些接口：
-
-- `GET /health`：健康检查
-- `POST /chat`：文本聊天
-- `POST /v1/uploads/image`：上传作品图片
-- `POST /v1/artworks/analyze`：分析作品
-- `POST /v1/artworks/:artworkId/generate-reference`：生成参考图
-
-接口字段说明见 `backend/API_CONTRACT.md`。
-
-## 测试
-
-Flutter 测试：
+检查服务：
 
 ```bash
-flutter test
+curl http://127.0.0.1:3000/health
 ```
 
-Flutter 静态检查：
+预期响应含 `ok: true`、`provider: "mock"`、`dataStore: "json"`、`uploadStorage: "local"`。mock 返回示例内容，不调用真实模型。
+
+### 2. 启动客户端
+
+另开终端，在仓库根目录运行：
+
+```bash
+flutter doctor
+flutter pub get
+flutter devices
+flutter run --dart-define=BACKEND_BASE_URL=http://127.0.0.1:3000
+```
+
+| 运行设备 | 后端地址 |
+| --- | --- |
+| iOS 模拟器 / macOS | `http://127.0.0.1:3000` |
+| Android 模拟器 | `http://10.0.2.2:3000` |
+| 同一 Wi-Fi 下的真机 | 电脑局域网 IP；后端需监听 `HOST=0.0.0.0`，并核对平台网络配置 |
+| 正式移动端包 | 必须显式传入正式 HTTPS 后端地址 |
+
+真机上的 `127.0.0.1` 指向手机自身。iOS/macOS 如遇原生依赖问题，在对应目录执行 `pod install` 后重试。
+
+## 常用检查
+
+在仓库根目录执行客户端检查：
 
 ```bash
 flutter analyze
+flutter test
 ```
 
-后端语法检查可以用：
+在 `backend/` 执行后端检查：
 
 ```bash
+npm ci
+npm test
 node --check src/server.js
 ```
 
-如果你在 Codex 环境里没有 `flutter` / `dart` 命令，需要回到本机 Flutter 环境里执行这些命令。
+Flutter 测试覆盖接口解析、聊天缓存、作品模型和本地身份等；后端测试包含会员限制、档案聚合和本地上传。云存储、真实模型及真机流程需另行联调，当前没有 GitHub Actions 自动检查。
 
-## 下一步开发顺序
+## 主要目录
 
-建议按功能树一段一段做，不要一次性把所有东西都重构完。
+```text
+lib/                  Flutter 应用、聊天、作品和用户功能
+backend/src/          路由、业务服务、AI provider、存储适配
+backend/test/         后端测试
+test/                 Flutter 测试
+docs/                 结构、数据库、运维和开发状态
+docs/handoff/         按日期保留的历史交接记录
+assets/               图片和图标
+ios/、android/ 等     各平台工程
+```
 
-### 0. 中文文档和学习路线
+历史交接记录描述当时状态；当前能力以代码及[开发状态](docs/PROJECT_STATUS.md)为准。更改接口、配置或运行方式时，同步更新对应说明，提交信息写清本次解决的问题。
 
-先保证 README、接口契约、工程结构说明都能读懂。
+## 配置与资料
 
-目标：知道项目是什么、怎么运行、当前结构是什么、下一步怎么做。
+模型密钥只在后端配置。`.env`、上传图片、运行数据库及构建产物不应提交；从 [.env.example](backend/.env.example) 建立本地配置。云服务配置说明见[后端 README](backend/README.md)。
 
-### 1. 数据边界
-
-暂时不急着上 PostgreSQL。先整理后端 repository 层，让 `users`、`artworks`、`uploads`、`membership` 的读写边界更清楚。
-
-目标：以后从 JSON 文件迁移到 SQLite / PostgreSQL 时，service 层不用大改。
-
-### 2. 用户身份
-
-不要继续永远写死 `user_me`。先做最小用户身份，让同一台设备重启后仍然能识别同一个用户。
-
-目标：后续作品档案、会员状态、支付结果都有稳定归属。
-
-### 3. 会员状态
-
-先做开发版 free / pro 状态，不急着接真实支付。
-
-目标：后端负责判断权限，前端只展示会员状态和入口。
-
-### 4. 支付
-
-等用户身份和会员状态稳定后，再接支付。
-
-目标：支付成功后可靠地更新用户会员状态。
-
-### 5. 完整前端展示
-
-最后再完善个人页、作品档案页、会员页、支付页和历史作品页。
-
-注意：前端不是完全放到最后。每个阶段都应该做一个最小 UI 入口，用来验证这条链路真的跑通。
-
-## 学习重点
-
-这个项目适合用来练习真正的软件工程能力：
-
-- 职责分离
-- 前后端接口契约
-- 数据模型设计
-- 本地缓存
-- 后端分层
-- AI provider 抽象
-- 测试保护
-- 从 demo 逐步演进成长期维护项目
-
-每做完一个功能分支，建议回来检查一次：代码边界是否清楚、接口是否稳定、测试是否覆盖、有没有引入新的技术债。
+仓库尚未选择开源许可证；第三方代码、依赖和素材沿用各自许可。

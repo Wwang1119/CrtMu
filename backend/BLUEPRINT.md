@@ -58,10 +58,9 @@ This mirrors the product idea closely:
 
 ## Current storage choice
 
-The current implementation uses a JSON file in `backend/data/app-db.json`.
-
-This is only for learning and local development. The concepts map directly to a
-real database later:
+The default local implementation uses `backend/data/app-db.json`. The repository
+layer also includes CloudBase document database and MySQL adapters selected by
+`DATA_STORE`; see [README.md](README.md) for configuration. The entity mapping is:
 
 - `users[]` -> `users` table
 - `artworks[]` -> `artworks` table
